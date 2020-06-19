@@ -54,11 +54,11 @@ class VideoDataSet(data.Dataset):  # thumos
         self.max_duration = opt['max_duration']
         self.min_duration = opt['min_duration']
         if self.feature_path[-3:]=='200':
-            self.feature_dirs = [self.feature_path + "/flow/csv", self.feature_path + "/rgb/csv"]
+            self.feature_dirs = [self.feature_path + "/flow/csv", self.feature_path + "/rgb/csv"] #读特征文件
         else:
             self.feature_dirs = [self.feature_path]
-        self._get_data()
-        self.video_list = self.data['video_names']
+        self._get_data() #读数据
+        self.video_list = self.data['video_names'] 
         # self._getDatasetDict()
         self._get_match_map()
 
@@ -156,13 +156,13 @@ class VideoDataSet(data.Dataset):  # thumos
 
     def _get_data(self):
         if 'train' in self.subset:
-            anno_df = pd.read_csv(self.video_info_path+'val_Annotation.csv')
+            anno_df = pd.read_csv(self.video_info_path+'val_Annotation.csv')     #读标签文件 
         elif 'val' in self.subset:
             anno_df = pd.read_csv(self.video_info_path+'test_Annotation.csv')
 
-        video_name_list = sorted(list(set(anno_df.video.values[:])))
+        video_name_list = sorted(list(set(anno_df.video.values[:])))            #视频名称列表去重
 
-        video_info_dir = '/'.join(self.video_info_path.split('/')[:-1])
+        video_info_dir = '/'.join(self.video_info_path.split('/')[:-1])         
         saved_data_path = os.path.join(video_info_dir, 'saved.%s.%s.nf%d.sf%d.num%d.%s.pkl' % (
             self.feat_dim, self.subset, self.num_videoframes, self.skip_videoframes,
             len(video_name_list), self.mode)
@@ -205,7 +205,7 @@ class VideoDataSet(data.Dataset):  # thumos
 
             if 'val' in video_name:
                 feature_h5s = [
-                    self.flow_val[video_name][::self.skip_videoframes,...],
+                    self.flow_val[video_name][::self.skip_videoframes,...], # 按照self.skip_videoframes间隔采样
                     self.rgb_val[video_name][::self.skip_videoframes,...]
                 ]
             elif 'test' in video_name:
@@ -213,7 +213,8 @@ class VideoDataSet(data.Dataset):  # thumos
                     self.flow_test[video_name][::self.skip_videoframes,...],
                     self.rgb_test[video_name][::self.skip_videoframes,...]
                 ]
-            num_snippet = min([h5.shape[0] for h5 in feature_h5s])
+			#这部分统一长度，采用最短的num_snippet统一，然后拼接rgb和flow特征 1024->2048
+            num_snippet = min([h5.shape[0] for h5 in feature_h5s])        
             df_data = np.concatenate([h5[:num_snippet, :]
                                       for h5 in feature_h5s],
                                      axis=1)
@@ -224,7 +225,7 @@ class VideoDataSet(data.Dataset):  # thumos
             windows_start = [i * stride for i in range(num_windows)]
             if num_snippet < num_videoframes:
                 windows_start = [0]
-                # Add on a bunch of zero data if there aren't enough windows.
+                # Add on a bunch of zero data if there aren't enough windows.       
                 tmp_data = np.zeros((num_videoframes - num_snippet, self.feat_dim))
                 df_data = np.concatenate((df_data, tmp_data), axis=0)
                 df_snippet.extend([
@@ -235,7 +236,7 @@ class VideoDataSet(data.Dataset):  # thumos
                 windows_start.append(num_snippet - num_videoframes)
 
             for start in windows_start:
-                tmp_data = df_data[start:start + num_videoframes, :]
+                tmp_data = df_data[start:start + num_videoframes, :]      # 根据生成的窗采样 窗的起始点为start 长度为num_videoframes
 
                 tmp_snippets = np.array(df_snippet[start:start + num_videoframes])
                 if self.mode == 'train':
